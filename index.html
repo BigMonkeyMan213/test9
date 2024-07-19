@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braden's Experiment</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #ffecd2;
+            color: #333;
+            position: relative;
+        }
+        header {
+            background: #444;
+            color: white;
+            padding: 15px 0;
+            text-align: center;
+            position: relative;
+        }
+        .title {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: black;
+            position: relative;
+            background: url('https://example.com/crimson-lightning.png') no-repeat center;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .container {
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .character-creation {
+            background: white;
+            padding: 30px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        h1, h2 {
+            margin: 0 0 20px;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"], textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="submit"], button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        input[type="submit"]:hover, button:hover {
+            background: #555;
+        }
+        .roll-remaining {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .chosen {
+            color: gold;
+            animation: color-change 1s infinite alternate;
+        }
+        @keyframes color-change {
+            0% { color: gold; }
+            100% { color: silver; }
+        }
+    </style>
+    <script>
+        let strengthAttempts = localStorage.getItem('strengthAttempts') ? parseInt(localStorage.getItem('strengthAttempts')) : 3;
+        let combatProwessAttempts = localStorage.getItem('combatProwessAttempts') ? parseInt(localStorage.getItem('combatProwessAttempts')) : 3;
+        let speedAttempts = localStorage.getItem('speedAttempts') ? parseInt(localStorage.getItem('speedAttempts')) : 3;
+        let cursedEnergyAttempts = localStorage.getItem('cursedEnergyAttempts') ? parseInt(localStorage.getItem('cursedEnergyAttempts')) : 3;
+        let raceAttempts = localStorage.getItem('raceAttempts') ? parseInt(localStorage.getItem('raceAttempts')) : 3;
+        let clanAttempts = localStorage.getItem('clanAttempts') ? parseInt(localStorage.getItem('clanAttempts')) : 3;
+        let cursedTechniqueAttempts = localStorage.getItem('cursedTechniqueAttempts') ? parseInt(localStorage.getItem('cursedTechniqueAttempts')) : 3;
+        let cursedEnergyPropertyAttempts = localStorage.getItem('cursedEnergyPropertyAttempts') ? parseInt(localStorage.getItem('cursedEnergyPropertyAttempts')) : 3;
+
+        const clans = ["Gojo Clan", "Clan 2", "Clan 3", "Clan 4", "Clan 5", "Clan 6", "Clan 7", "Clan 8", "Clan 9", "Clan 10", "Clan 11", "Clan 12", "Clan 13", "Clan 14", "Clan 15"];
+        const cursedTechniques = [
+            "Heavenly restriction-body to energy", 
+            "Heavenly restriction-energy to body", 
+            "Limitless + six eyes", 
+            "Technique 4", "Technique 5", 
+            "Technique 6", "Technique 7", 
+            "Technique 8", "Technique 9", "Technique 10",
+            "Technique 11", "Technique 12", "Technique 13", 
+            "Technique 14", "Technique 15", "Technique 16", 
+            "Technique 17", "Technique 18", "Technique 19", 
+            "Technique 20", "Technique 21", "Technique 22", 
+            "Technique 23", "Technique 24", "Technique 25", 
+            "Technique 26", "Technique 27", "Technique 28", 
+            "Technique 29", "Technique 30", "Technique 31", 
+            "Technique 32", "Technique 33", "Technique 34", 
+            "Technique 35", "Technique 36", "Technique 37", 
+            "Technique 38", "Technique 39", "Technique 40", 
+            "Technique 41", "Technique 42", "Technique 43", 
+            "Technique 44", "Technique 45", "Technique 46", 
+            "Technique 47", "Technique 48", "Technique 49", 
+            "Technique 50"
+        ];
+        const races = [
+            { name: "Human", chance: 68, feature: function() { return; }},
+            { name: "Cursed Spirit", chance: 15, feature: function() {
+                applyStatModifier(1, 1500);
+            }},
+            { name: "Death Womb", chance: 7, feature: function() {
+                applyStatModifier(2, 2300);
+            }},
+            { name: "Reincarnation", chance: 10, feature: function() {
+                applyStatModifier(2, 5000);
+                addSecondaryCursedTechnique(true);
+            }},
+        ];
+        const cursedEnergyProperties = [
+            { name: "None", chance: 90 },
+            { name: "Property 1", chance: 2 },
+            { name: "Property 2", chance: 2 },
+            { name: "Property 3", chance: 2 },
+            { name: "Property 4", chance: 2 },
+            { name: "Property 5", chance: 2 }
+        ];
+
+        let originalStats = {
+            strength: 0,
+            combatProwess: 0,
+            speed: 0,
+            cursedEnergy: 0
+        };
+
+        let previousStats = {...originalStats};
+
+        function getRandomRace() {
+            const random = Math.random() * 100;
+            let sum = 0;
+            for (const race of races) {
+                sum += race.chance;
+                if (random <= sum) {
+                    return race;
+                }
+            }
+        }
+
+        function getRandomCursedEnergyProperty() {
+            const random = Math.random() * 100;
+            let sum = 0;
+            for (const property of cursedEnergyProperties) {
+                sum += property.chance;
+                if (random <= sum) {
+                    return property;
+                }
+            }
+        }
+
+        function randomizeStat(statId, attempts, attemptsKey, maxValue) {
+            if (attempts > 0 || document.getElementById('character-name').value.toLowerCase() === "master") {
+                const value = (statId === 'cursed-energy') ? 
+                    Math.floor(Math.random() * 10000) + 1 : Math.floor(Math.random() * 10) + 1;
+                document.getElementById(statId).value = value;
+                document.getElementById(statId + '-display').innerText = value + '/' + maxValue;
+                if (document.getElementById('character-name').value.toLowerCase() !== "master") {
+                    attempts--;
+                    localStorage.setItem(attemptsKey, attempts);
+                }
+                previousStats = {...originalStats};
+                originalStats[statId.replace('-', '')] = value;
+                document.getElementById(statId + '-remaining').innerText = attempts + '/3 Remaining Rolls';
+                updateCharacterScore();
+                return attempts;
+            } else {
+                alert('No more attempts left for ' + statId.replace('-', ' ') + '!');
+                return 0;
+            }
+        }
+
+        function randomizeStrength() {
+            strengthAttempts = randomizeStat('strength', strengthAttempts, 'strengthAttempts', 10);
+        }
+
+        function randomizeCombatProwess() {
+            combatProwessAttempts = randomizeStat('combat-prowess', combatProwessAttempts, 'combatProwessAttempts', 10);
+        }
+
+        function randomizeSpeed() {
+            speedAttempts = randomizeStat('speed', speedAttempts, 'speedAttempts', 10);
+        }
+
+        function randomizeCursedEnergy() {
+            cursedEnergyAttempts = randomizeStat('cursed-energy', cursedEnergyAttempts, 'cursedEnergyAttempts', 10000);       originalStats['cursedEnergy'] = parseInt(document.getElementById('cursed-energy').value);
+    }
+
+    function randomizeClan() {
+        if (clanAttempts > 0 || document.getElementById('character-name').value.toLowerCase() === "master") {
+            const clan = clans[Math.floor(Math.random() * clans.length)];
+            document.getElementById('clan').value = clan;
+            if (document.getElementById('character-name').value.toLowerCase() !== "master") {
+                clanAttempts--;
+                localStorage.setItem('clanAttempts', clanAttempts);
+            }
+            document.getElementById('clan-remaining').innerText = clanAttempts + '/3 Remaining Rolls';
+        } else {
+            alert('No more attempts left for Clan!');
+        }
+    }
+
+    function randomizeCursedTechnique() {
+        if (cursedTechniqueAttempts > 0 || document.getElementById('character-name').value.toLowerCase() === "master") {
+            let technique;
+            const prevTechnique = document.getElementById('cursed-technique').value;
+            if (prevTechnique.includes("Heavenly restriction-body to energy") || prevTechnique.includes("Heavenly restriction-energy to body")) {
+                revertStats();
+            }
+
+            if (Math.random() <= 0.01 && document.getElementById('clan').value === 'Gojo Clan') {
+                technique = "Limitless + six eyes";
+            } else {
+                do {
+                    technique = cursedTechniques[Math.floor(Math.random() * cursedTechniques.length)];
+                } while (technique === "Heavenly restriction-energy to body" || technique === "Heavenly restriction-body to energy");
+            }
+
+            document.getElementById('cursed-technique').value = technique;
+            applyCursedTechniqueEffect(technique);
+            if (document.getElementById('character-name').value.toLowerCase() !== "master") {
+                cursedTechniqueAttempts--;
+                localStorage.setItem('cursedTechniqueAttempts', cursedTechniqueAttempts);
+            }
+            document.getElementById('cursed-technique-remaining').innerText = cursedTechniqueAttempts + '/3 Remaining Rolls';
+            addSecondaryCursedTechnique(false);
+        } else {
+            alert('No more attempts left for Cursed Technique!');
+        }
+    }
+
+    function applyCursedTechniqueEffect(technique) {
+        if (technique === "Heavenly restriction-body to energy") {
+            previousStats = {...originalStats};
+            document.getElementById('cursed-energy').value = parseInt(document.getElementById('cursed-energy').value) + 10000;
+            document.getElementById('cursed-energy-display').innerText = document.getElementById('cursed-energy').value + '/10000';
+            document.getElementById('strength').value = Math.max(0, parseInt(document.getElementById('strength').value) - 4);
+            document.getElementById('strength-display').innerText = document.getElementById('strength').value + '/10';
+            document.getElementById('combat-prowess').value = Math.max(0, parseInt(document.getElementById('combat-prowess').value) - 4);
+            document.getElementById('combat-prowess-display').innerText = document.getElementById('combat-prowess').value + '/10';
+            document.getElementById('speed').value = Math.max(0, parseInt(document.getElementById('speed').value) - 4);
+            document.getElementById('speed-display').innerText = document.getElementById('speed').value + '/10';
+        } else if (technique === "Heavenly restriction-energy to body") {
+            previousStats = {...originalStats};
+            document.getElementById('cursed-energy').value = 0;
+            document.getElementById('cursed-energy-display').innerText = '0/10000';
+            document.getElementById('strength').value = parseInt(document.getElementById('strength').value) + 6;
+            document.getElementById('strength-display').innerText = document.getElementById('strength').value + '/10';
+            document.getElementById('combat-prowess').value = parseInt(document.getElementById('combat-prowess').value) + 6;
+            document.getElementById('combat-prowess-display').innerText = document.getElementById('combat-prowess').value + '/10';
+            document.getElementById('speed').value = parseInt(document.getElementById('speed').value) + 6;
+            document.getElementById('speed-display').innerText = document.getElementById('speed').value + '/10';
+        }
+        updateCharacterScore();
+    }
+
+    function revertStats() {
+        document.getElementById('strength').value = previousStats.strength;
+        document.getElementById('strength-display').innerText = previousStats.strength + '/10';
+        document.getElementById('combat-prowess').value = previousStats.combatProwess;
+        document.getElementById('combat-prowess-display').innerText = previousStats.combatProwess + '/10';
+        document.getElementById('speed').value = previousStats.speed;
+        document.getElementById('speed-display').innerText = previousStats.speed + '/10';
+        document.getElementById('cursed-energy').value = previousStats.cursedEnergy;
+        document.getElementById('cursed-energy-display').innerText = previousStats.cursedEnergy + '/10000';
+    }
+
+    function randomizeCursedEnergyProperty() {
+        if (cursedEnergyPropertyAttempts > 0 || document.getElementById('character-name').value.toLowerCase() === "master") {
+            const property = getRandomCursedEnergyProperty();
+            document.getElementById('cursed-energy-property').value = property.name;
+            if (document.getElementById('character-name').value.toLowerCase() !== "master") {
+                cursedEnergyPropertyAttempts--;
+                localStorage.setItem('cursedEnergyPropertyAttempts', cursedEnergyPropertyAttempts);
+            }
+            document.getElementById('cursed-energy-property-remaining').innerText = cursedEnergyPropertyAttempts + '/3 Remaining Rolls';
+        } else {
+            alert('No more attempts left for Cursed Energy Property!');
+        }
+    }
+
+    function resetStats() {
+        document.getElementById('strength').value = originalStats.strength;
+        document.getElementById('strength-display').innerText = originalStats.strength + '/10';
+        document.getElementById('combat-prowess').value = originalStats.combatProwess;
+        document.getElementById('combat-prowess-display').innerText = originalStats.combatProwess + '/10';
+        document.getElementById('speed').value = originalStats.speed;
+        document.getElementById('speed-display').innerText = originalStats.speed + '/10';
+        document.getElementById('cursed-energy').value = originalStats.cursedEnergy;
+        document.getElementById('cursed-energy-display').innerText = originalStats.cursedEnergy + '/10000';
+    }
+
+    function randomizeRace() {
+        if (document.getElementById('character-name').value.toLowerCase() === "reset") {
+            resetAll();
+        } else if (!document.getElementById('strength').value || !document.getElementById('cursed-energy').value || !document.getElementById('speed').value || !document.getElementById('combat-prowess').value || !document.getElementById('clan').value || !document.getElementById('cursed-technique').value || !document.getElementById('cursed-energy-property').value) {
+            alert('Please fill out all the other options before randomizing the race!');
+        } else if (document.getElementById('character-name').value.toLowerCase() === "master" || raceAttempts > 0) {
+            resetStats();
+            const race = getRandomRace();
+            document.getElementById('race').value = race.name;
+            race.feature();
+            if (document.getElementById('character-name').value.toLowerCase() !== "master") {
+                raceAttempts--;
+                localStorage.setItem('raceAttempts', raceAttempts);
+            }
+            document.getElementById('race-remaining').innerText = raceAttempts + '/3 Remaining Rolls';
+            if (race.name !== "Reincarnation") {
+                addSecondaryCursedTechnique(false);
+            }
+        } else {
+            alert('No more attempts left for Race!');
+        }
+    }
+
+    function addSecondaryCursedTechnique(isReincarnation) {
+        if (isReincarnation || Math.random() <= 0.05) {
+            let secondTechnique;
+            do {
+                secondTechnique = cursedTechniques[Math.floor(Math.random() * cursedTechniques.length)];
+            } while (secondTechnique === "Heavenly restriction-energy to body" || secondTechnique === "Heavenly restriction-body to energy");
+            const currentTechnique = document.getElementById('cursed-technique').value;
+            document.getElementById('cursed-technique').value = `${currentTechnique} + ${secondTechnique}`;
+            applyCursedTechniqueEffect(secondTechnique);
+        }
+    }
+
+    function applyStatModifier(statModifier, cursedEnergyModifier) {
+        document.getElementById('strength').value = parseInt(document.getElementById('strength').value) + statModifier;
+        document.getElementById('strength-display').innerText = document.getElementById('strength').value + '/10';
+        document.getElementById('combat-prowess').value =parseInt(document.getElementById('combat-prowess').value) + statModifier;
+            document.getElementById('combat-prowess-display').innerText = document.getElementById('combat-prowess').value + '/10';
+            document.getElementById('speed').value = parseInt(document.getElementById('speed').value) + statModifier;
+            document.getElementById('speed-display').innerText = document.getElementById('speed').value + '/10';
+            document.getElementById('cursed-energy').value = parseInt(document.getElementById('cursed-energy').value) + cursedEnergyModifier;
+            document.getElementById('cursed-energy-display').innerText = document.getElementById('cursed-energy').value + '/10000';
+            updateCharacterScore();
+        }
+
+        function updateCharacterScore() {
+            const totalStats = parseInt(document.getElementById('strength').value) + 
+                               parseInt(document.getElementById('combat-prowess').value) + 
+                               parseInt(document.getElementById('speed').value);
+
+            let score = "Below Average";
+            if (totalStats >= 29) {
+                score = '<span class="chosen">Chosen</span>';
+            } else if (totalStats >= 16) {
+                score = "Above Average";
+            } else if (totalStats >= 15) {
+                score = "Average";
+            }
+
+            document.getElementById('character-score').innerHTML = `Character Score: ${score}`;
+            return score;
+        }
+
+        function resetAll() {
+            strengthAttempts = combatProwessAttempts = speedAttempts = cursedEnergyAttempts = raceAttempts = clanAttempts = cursedTechniqueAttempts = cursedEnergyPropertyAttempts = 3;
+            localStorage.setItem('strengthAttempts', 3);
+            localStorage.setItem('combatProwessAttempts', 3);
+            localStorage.setItem('speedAttempts', 3);
+            localStorage.setItem('cursedEnergyAttempts', 3);
+            localStorage.setItem('raceAttempts', 3);
+            localStorage.setItem('clanAttempts', 3);
+            localStorage.setItem('cursedTechniqueAttempts', 3);
+            localStorage.setItem('cursedEnergyPropertyAttempts', 3);
+            document.getElementById('strength-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('combat-prowess-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('speed-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('cursed-energy-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('race-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('clan-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('cursed-technique-remaining').innerText = '3/3 Remaining Rolls';
+            document.getElementById('cursed-energy-property-remaining').innerText = '3/3 Remaining Rolls';
+            resetStats();
+            document.getElementById('clan').value = '';
+            document.getElementById('cursed-technique').value = '';
+            document.getElementById('race').value = '';
+            document.getElementById('cursed-energy-property').value = '';
+            document.getElementById('character-score').innerHTML = 'Character Score: Below Average';
+        }
+
+        function saveFormData() {
+            const characterName = document.getElementById('character-name').value;
+            const characterBackstory = document.getElementById('character-backstory').value;
+            const strength = document.getElementById('strength').value;
+            const cursedEnergy = document.getElementById('cursed-energy').value;
+            const speed = document.getElementById('speed').value;
+            const combatProwess = document.getElementById('combat-prowess').value;
+            const clan = document.getElementById('clan').value;
+            const cursedTechnique = document.getElementById('cursed-technique').value;
+            const race = document.getElementById('race').value;
+            const cursedEnergyProperty = document.getElementById('cursed-energy-property').value;
+            const characterScore = updateCharacterScore();
+
+            localStorage.setItem('characterName', characterName);
+            localStorage.setItem('characterBackstory', characterBackstory);
+            localStorage.setItem('strength', strength);
+            localStorage.setItem('cursedEnergy', cursedEnergy);
+            localStorage.setItem('speed', speed);
+            localStorage.setItem('combatProwess', combatProwess);
+            localStorage.setItem('clan', clan);
+            localStorage.setItem('cursedTechnique', cursedTechnique);
+            localStorage.setItem('race', race);
+            localStorage.setItem('cursedEnergyProperty', cursedEnergyProperty);
+            localStorage.setItem('characterScore', characterScore);
+        }
+
+        function loadFormData() {
+            if (localStorage.getItem('characterName')) {
+                document.getElementById('character-name').value = localStorage.getItem('characterName');
+                document.getElementById('character-backstory').value = localStorage.getItem('characterBackstory');
+                document.getElementById('strength').value = localStorage.getItem('strength');
+                document.getElementById('strength-display').innerText = localStorage.getItem('strength') + '/10';
+                document.getElementById('cursed-energy').value = localStorage.getItem('cursedEnergy');
+                document.getElementById('cursed-energy-display').innerText = localStorage.getItem('cursedEnergy') + '/10000';
+                document.getElementById('speed').value = localStorage.getItem('speed');
+                document.getElementById('speed-display').innerText = localStorage.getItem('speed') + '/10';
+                document.getElementById('combat-prowess').value = localStorage.getItem('combatProwess');
+                document.getElementById('combat-prowess-display').innerText = localStorage.getItem('combatProwess') + '/10';
+                document.getElementById('clan').value = localStorage.getItem('clan');
+                document.getElementById('cursed-technique').value = localStorage.getItem('cursedTechnique');
+                document.getElementById('race').value = localStorage.getItem('race');
+                document.getElementById('cursed-energy-property').value = localStorage.getItem('cursedEnergyProperty');
+                document.getElementById('character-score').innerHTML = `Character Score: ${localStorage.getItem('characterScore')}`;
+            }
+            document.getElementById('strength-remaining').innerText = strengthAttempts + '/3 Remaining Rolls';
+            document.getElementById('combat-prowess-remaining').innerText = combatProwessAttempts + '/3 Remaining Rolls';
+            document.getElementById('speed-remaining').innerText = speedAttempts + '/3 Remaining Rolls';
+            document.getElementById('cursed-energy-remaining').innerText = cursedEnergyAttempts + '/3 Remaining Rolls';
+            document.getElementById('race-remaining').innerText = raceAttempts + '/3 Remaining Rolls';
+            document.getElementById('clan-remaining').innerText = clanAttempts + '/3 Remaining Rolls';
+            document.getElementById('cursed-technique-remaining').innerText = cursedTechniqueAttempts + '/3 Remaining Rolls';
+            document.getElementById('cursed-energy-property-remaining').innerText = cursedEnergyPropertyAttempts + '/3 Remaining Rolls';
+        }
+
+        window.onload = loadFormData;
+    </script>
+</head>
+<body>
+    <header>
+        <h1 class="title">Jujutsu Story Time</h1>
+        <p>Create and customize your RPG characters with unique abilities.</p>
+    </header>
+    <div class="container">
+        <div class="character-creation">
+            <h2>Character Creation</h2>
+            <form action="mailto:bradenr213x@gmail.com" method="post" enctype="text/plain" onsubmit="saveFormData()">
+                <label for="character-name">Character Name:</label>
+                <input type="text" id="character-name" name="character-name" required oninput="if(this.value.toLowerCase() === 'reset') resetAll();"><br>
+                <label for="character-backstory">Backstory:</label>
+                <textarea id="character-backstory" name="character-backstory" rows="4" cols="50" required></textarea><br>
+                <label for="strength">Strength: <span id="strength-display">0/10</span></label>
+                <input type="number" id="strength" name="strength" readonly>
+                <button type="button" onclick="randomizeStrength()">Randomize Strength</button> <span class="roll-remaining" id="strength-remaining">3/3 Remaining Rolls</span><br>
+                <label for="cursed-energy">Cursed Energy: <span id="cursed-energy-display">0/10000</span></label>
+                <input type="number" id="cursed-energy" name="cursed-energy" readonly>
+                <button type="button" onclick="randomizeCursedEnergy()">Randomize Cursed Energy</button> <span class="roll-remaining" id="cursed-energy-remaining">3/3 Remaining Rolls</span><br>
+                <label for="speed">Speed: <span id="speed-display">0/10</span></label>
+                <input type="number" id="speed" name="speed" readonly>
+                <button type="button" onclick="randomizeSpeed()">Randomize Speed</button> <span class="roll-remaining" id="speed-remaining">3/3 Remaining Rolls</span><br>
+                <label for="combat-prowess">Combat Prowess: <span id="combat-prowess-display">0/10</span></label>
+                <input type="number" id="combat-prowess" name="combat-prowess" readonly>
+                <button type="button" onclick="randomizeCombatProwess()">Randomize Combat Prowess</button> <span class="roll-remaining" id="combat-prowess-remaining">3/3 Remaining Rolls</span><br>
+                <label for="clan">Clan:</label>
+                <input type="text" id="clan" name="clan" readonly>
+                <button type="button" onclick="randomizeClan()">Randomize Clan</button> <span class="roll-remaining" id="clan-remaining">3/3 Remaining Rolls</span><br>
+                <label for="cursed-technique">Cursed Technique:</label>
+                <input type="text" id="cursed-technique" name="cursed-technique" readonly>
+                <button type="button" onclick="randomizeCursedTechnique()">Randomize Cursed Technique</button> <span class="roll-remaining" id="cursed-technique-remaining">3/3 Remaining Rolls</span><br>
+                <label for="cursed-energy-property">Cursed Energy Property:</label>
+                <input type="text" id="cursed-energy-property" name="cursed-energy-property" readonly>
+                <button type="button" onclick="randomizeCursedEnergyProperty()">Randomize Cursed Energy Property</button> <span class="roll-remaining" id="cursed-energy-property-remaining">3/3 Remaining Rolls</span><br>
+                <label for="race">Race:</label>
+                <input type="text" id="race" name="race" readonly>
+                <button type="button" onclick="randomizeRace()">Randomize Race</button> <span class="roll-remaining" id="race-remaining">3/3 Remaining Rolls</span><br>
+                <div id="character-score">Character Score: Below Average</div><br>
+                <input type="submit" value="Submit Character">
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
